@@ -1,0 +1,45 @@
+{
+  "name": "neotemplate",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "format:write": "prettier --write \"**/*.{css,js,json,jsx,ts,tsx}\"",
+    "format": "prettier \"**/*.{css,js,json,jsx,ts,tsx}\"",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.11.4",
+    "@emotion/styled": "^11.11.5",
+    "@mui/base": "^5.0.0-beta.40",
+    "@mui/icons-material": "^5.15.1",
+    "@mui/lab": "^5.0.0-alpha.157",
+    "@mui/material": "^5.15.15",
+    "axios": "^1.6.7",
+    "classnames": "^2.3.2",
+    "clsx": "^2.1.0",
+    "cmdk": "^0.2.0",
+    "eslint": "8.56.0",
+    "eslint-config-next": "^14.2.1",
+    "i18next": "^23.11.2",
+    "i18next-browser-languagedetector": "^7.2.1",
+    "i18next-http-backend": "^2.5.0",
+    "i18next-resources-to-backend": "^1.2.1",
+    "next": "^14.2.1",
+    "next-auth": "^4.24.5",
+    "next-i18n-router": "^5.4.0",
+    "next-i18next": "^15.2.0",
+    "next-pwa": "^5.6.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-i18next": "^14.1.0"
+  },
+  "devDependencies": {
+    "@types/ms": "^0.7.31",
+    "autoprefixer": "^10.4.14",
+    "prettier": "^2.8.2",
+    "ts-loader": "^9.4.3"
+  }
+}

@@ -1,0 +1,71 @@
+services:
+    db:
+        container_name: db
+        image: postgres:14
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "10m"
+                max-file: "10"
+        restart: always
+        volumes:
+            - ./postgres_data:/var/lib/postgresql/data/
+        env_file:
+            - ./backend/.env
+        ports:
+        - 5434:5434
+        expose:
+        - "5434" # Publishes 5434 to other containers but NOT to host machine
+        command: -p 5434
+
+    backend:
+        container_name: backend
+        image: backend
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "10m"
+                max-file: "10"
+        command: >
+            bash -c "python manage.py makemigrations
+            && python manage.py migrate
+            && python manage.py collectstatic --no-input
+            && python manage.py shell < api/scripts/generate_languages.py
+            && python -m uvicorn core.asgi:application --host 0.0.0.0 --port 8000"
+        restart: always
+        build:
+            context: ./backend
+        hostname: backend
+        env_file:
+            - ./backend/.env
+        volumes:
+            - ./backend:/usr/src/app
+        ports:
+            - 8000:8000
+        depends_on:
+            - db
+
+    frontend:
+        container_name: frontend
+        image: frontend
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "10m"
+                max-file: "10"
+        command: npm run start
+        restart: always
+        build:
+            context: ./frontend
+        env_file:
+            - ./frontend/.env
+        volumes:
+            - ./frontend:/app
+        ports:
+            - 3000:3000
+        depends_on:
+            - backend
+
+volumes:
+    postgres_data:
+    
