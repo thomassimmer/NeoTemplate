@@ -16,8 +16,11 @@ NeoTemplate is a full-stack website template built using Next.js with Material U
 
 ## Installation
 
-Ensure you have Docker and Docker Compose installed.
+- Right-click this button to create a repository using this one as a template.
 
+[![Start with this template](https://img.shields.io/badge/Click_Me!-37a779)](https://github.com/new?template_owner=thomassimmers&template_name=NeoTemplate&owner=%40me&name=NeoTemplate&description=My+clone+repository&visibility=public)
+
+- Ensure you have Docker and Docker Compose installed.
 - Create `.env` files in the `backend/` and `frontend/` folders and populate them using the respective `.env.template` files.
 
 ### Local
