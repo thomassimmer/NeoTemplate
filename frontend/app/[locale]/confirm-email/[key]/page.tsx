@@ -31,10 +31,10 @@ export default function Page({ params }: { params: { key: string } }) {
     <Stack
       maxWidth={'lg'}
       width={'100%'}
-      sx={{ alignItems: 'center', justifyContent: 'center' }}
+      sx={{ alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}
       spacing={6}
     >
-      <Typography variant='h1' fontSize={30}>
+      <Typography variant='h2'>
         Please, click on this button to verify your email.
       </Typography>
 

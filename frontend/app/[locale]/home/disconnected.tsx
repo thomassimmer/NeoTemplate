@@ -18,27 +18,21 @@ export default function HomeDisconnected() {
         justifyContent: 'center',
         alignItems: 'center',
         height: '100%',
+        textAlign: 'center'
       }}
       gap={4}
       py={4}
     >
-      <Typography variant='h1' sx={{ fontSize: '5rem' }}>
-        <p>
-          <span style={{ color: theme.palette.text.primary }}>Neo</span>
-          <span style={{ color: theme.palette.primary.main }}>Template</span>
-        </p>
+      <Typography variant='h1'>
+        <span style={{ color: theme.palette.text.primary }}>Neo</span>
+        <span style={{ color: theme.palette.primary.main }}>Template</span>
       </Typography>
 
-      <Typography
-        variant='h2'
-        style={{
-          fontSize: '3rem',
-        }}
-      >
+      <Typography variant='h2'>
         <p>{t('Focus on the essential and launch your idea 🚀')}</p>
       </Typography>
 
-      <Typography variant='h3' style={{ fontSize: '1.5rem' }}>
+      <Typography variant='h3'>
         {t('If you already have an account,')}&nbsp;
         <Link
           href='#'

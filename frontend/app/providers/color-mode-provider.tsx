@@ -43,33 +43,33 @@ export default function ColorModeProvider({
           mode,
           ...(mode === 'light'
             ? {
-                // palette values for light mode
-                primary: mainColor,
-                secondary: grey,
-                divider: mainColor[700],
-                background: {
-                  default: mainColor[50],
-                  paper: `linear-gradient(${mainColor[50]}, ${mainColor[100]})`,
-                },
-                text: {
-                  primary: '#000',
-                  secondary: '#fff',
-                },
-              }
+              // palette values for light mode
+              primary: mainColor,
+              secondary: grey,
+              divider: mainColor[700],
+              background: {
+                default: mainColor[50],
+                paper: `linear-gradient(${mainColor[50]}, ${mainColor[100]})`,
+              },
+              text: {
+                primary: '#000',
+                secondary: '#fff',
+              },
+            }
             : {
-                // palette values for dark mode
-                primary: mainColor,
-                secondary: grey,
-                divider: mainColor[700],
-                background: {
-                  default: grey[800],
-                  paper: `linear-gradient(${grey[800]}, ${grey[900]})`,
-                },
-                text: {
-                  primary: '#fff',
-                  secondary: '#000',
-                },
-              }),
+              // palette values for dark mode
+              primary: mainColor,
+              secondary: grey,
+              divider: mainColor[700],
+              background: {
+                default: grey[800],
+                paper: `linear-gradient(${grey[800]}, ${grey[900]})`,
+              },
+              text: {
+                primary: '#fff',
+                secondary: '#000',
+              },
+            }),
         },
         typography: {
           fontFamily: [
@@ -88,6 +88,24 @@ export default function ColorModeProvider({
           fontWeightLight: 500,
           fontWeightRegular: 400,
           fontWeightMedium: 400,
+          h1: {
+            fontSize: '2.5rem',
+            '@media (min-width:600px)': {
+              fontSize: '5rem',
+            },
+          },
+          h2: {
+            fontSize: '1.5rem',
+            '@media (min-width:600px)': {
+              fontSize: '3rem',
+            },
+          },
+          h3: {
+            fontSize: '1rem',
+            '@media (min-width:600px)': {
+              fontSize: '1.5rem',
+            },
+          }
         },
       }),
     [mode]

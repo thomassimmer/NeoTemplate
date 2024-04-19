@@ -11,7 +11,7 @@ export default function HomeConnected() {
 
   return (
     <Stack style={{ alignItems: 'center', justifyContent: 'center' }} py={10}>
-      <Typography variant='h1' fontSize={40}>
+      <Typography variant='h2'>
         {t('Welcome')} {user && user.username}!
       </Typography>
     </Stack>

@@ -14,6 +14,12 @@ NeoTemplate is a full-stack website template built using Next.js with Material U
 
 ![NeoTemplate](/docs/images/neotemplate.gif)
 
+<p align="center">
+<img clear="left" height="400" src="./docs/images/mobile.png">
+<img clear="right" height="400" src="./docs/images/dark_mobile.png">
+</p>
+
+
 ## Installation
 
 - Right-click this button to create a repository using this one as a template.

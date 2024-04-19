@@ -20,10 +20,10 @@ export default function Page() {
     <Stack
       maxWidth={'lg'}
       width={'100%'}
-      sx={{ alignItems: 'center', justifyContent: 'center' }}
+      sx={{ alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}
       spacing={6}
     >
-      <Typography variant='h1' fontSize={30}>
+      <Typography variant='h2'>
         Your email has been confirmed. Thank you.
       </Typography>
 

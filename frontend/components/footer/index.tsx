@@ -24,7 +24,6 @@ export default function Footer() {
       }}
     >
       <Stack
-        direction={'row'}
         sx={{
           alignItems: 'center',
           justifyContent: 'center',
@@ -33,6 +32,16 @@ export default function Footer() {
           background: theme.palette.background.default,
           color: theme.palette.text.primary,
           width: '100%',
+          px: 3,
+
+          '@media (min-width:900px)': {
+            flexDirection: 'row',
+            justifyContent: 'space-between'
+          },
+
+          '@media (min-width:1100px)': {
+            justifyContent: 'center',
+          }
         }}
         py={5}
         gap={2}
@@ -40,7 +49,11 @@ export default function Footer() {
         <Stack
           direction={'row'}
           gap={3}
-          sx={{ position: 'absolute', left: '50px' }}
+          sx={{
+            '@media (min-width:1100px)': {
+              position: 'absolute', left: '50px'
+            }
+          }}
         >
           <ThemeSelector />
 
