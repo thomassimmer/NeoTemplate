@@ -17,7 +17,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Create test environment file
+      - name: Create backend environment file
         working-directory: ./backend
         run: |
           cat > .env << EOF
@@ -26,7 +26,7 @@ jobs:
           FRONTEND_HOST=http://localhost:3000
           SQL_ENGINE=django.db.backends.postgresql
           POSTGRES_DB=neotemplate_test
-          POSTGRES_USER=postgres
+          POSTGRES_USER=neotemplate_db
           POSTGRES_PASSWORD=postgres
           POSTGRES_HOST=db
           POSTGRES_PORT=5434
@@ -36,14 +36,43 @@ jobs:
           EMAIL_HOST_PASSWORD=
           EOF
 
-      - name: Build and start services
+      - name: Create frontend environment file
+        working-directory: ./frontend
+        run: |
+          cat > .env << EOF
+          NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
+          NEXT_PRIVATE_BACKEND_URL=http://backend:8000
+          NEXTAUTH_URL=http://localhost:3000
+          NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET || 'test-nextauth-secret-for-ci' }}
+          EOF
+
+      - name: Build and start database
         run: |
           docker compose up -d db
-          docker compose build backend
 
-      - name: Wait for database
+      - name: Wait for database to be ready
         run: |
-          timeout 30 bash -c 'until docker compose exec -T db pg_isready -U postgres -p 5434; do sleep 1; done'
+          echo "Waiting for database container to start..."
+          timeout 30 bash -c 'until docker compose ps -q db > /dev/null 2>&1; do echo "Waiting for container..."; sleep 1; done'
+          echo "Container is running, waiting for database to accept connections..."
+          # Wait for database to accept connections - try with the configured user
+          timeout 90 bash -c '
+            for i in {1..45}; do
+              if docker compose exec -T db pg_isready -U neotemplate_db -p 5434 2>/dev/null; then
+                echo "Database is ready!"
+                exit 0
+              fi
+              echo "Attempt $i: Database not ready yet..."
+              sleep 2
+            done
+            echo "ERROR: Database failed to become ready within timeout"
+            docker compose logs db
+            exit 1
+          '
+
+      - name: Build backend
+        run: |
+          docker compose build backend
 
       - name: Run tests
         run: |
