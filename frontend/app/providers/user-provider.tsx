@@ -1,8 +1,6 @@
 'use client';
 
-import useAxiosAuth from '@/lib/hooks/use-axios-auth';
 import { UserInterface } from '@/types/types';
-import { AxiosError } from 'axios';
 import { signOut, useSession } from 'next-auth/react';
 import {
   Dispatch,
@@ -12,6 +10,8 @@ import {
   useEffect,
   useState,
 } from 'react';
+import { useUserUseCase } from '@/src/presentation/hooks/use-service-container';
+import { UserNotFoundException, AuthenticationException } from '@/src/domain/exceptions';
 
 interface UserContextInterface {
   user: UserInterface | null;
@@ -25,9 +25,8 @@ export default function UserProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const axiosPublic = useAxiosAuth();
-
-  const { status, data: session }: any = useSession();
+  const { status, data: session } = useSession();
+  const userUseCase = useUserUseCase();
 
   const [user, setUser] = useState<UserInterface | null>(null);
 
@@ -35,30 +34,43 @@ export default function UserProvider({
     if (status === 'authenticated') {
       const fetchUser = async () => {
         try {
-          const response = await axiosPublic.get(`/api/users/?me=1`);
-          const newUserInfo: UserInterface = response.data[0];
+          const currentUser = await userUseCase.getCurrentUser();
+
+          // Convert domain User to UserInterface for context
+          const newUserInfo: UserInterface = {
+            id: currentUser.id,
+            email: currentUser.email,
+            username: currentUser.username,
+            image: currentUser.image,
+            firstName: currentUser.firstName,
+            lastName: currentUser.lastName,
+          };
+
           setUser(newUserInfo);
-        } catch (error: any) {
-          if (error instanceof AxiosError) {
-            if (
-              error.response?.data &&
-              error.response.data.code == 'user_not_found'
-            ) {
-              signOut();
-              return;
-            }
+        } catch (error) {
+          if (error instanceof UserNotFoundException) {
+            // User not found - sign out
+            signOut();
+            return;
           }
-          throw error;
+          if (error instanceof AuthenticationException) {
+            // Authentication failed - token might be invalid or expired
+            console.error('Authentication failed when fetching user:', error);
+            signOut();
+            return;
+          }
+          // For other errors, we might want to log them but not sign out
+          console.error('Failed to fetch user:', error);
         }
       };
 
-      if (!user) {
+      if (!user && session?.user) {
         fetchUser();
       }
     } else {
       setUser(null);
     }
-  }, [status, session, user, axiosPublic]);
+  }, [status, user, userUseCase, session]);
 
   return (
     <UserContext.Provider

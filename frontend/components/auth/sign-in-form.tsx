@@ -1,17 +1,22 @@
 'use client';
 
 import { useModalContext } from '@/app/providers/modal-provider';
-import { axiosPublic } from '@/lib/axios';
-import { ErrorFormSignInInterface } from '@/types/types';
-import { Divider, Link, Stack } from '@mui/material';
+import { Divider, Stack } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LoadingDots } from '../icons';
 import FormControl from '../inputs/FormControl';
 import Button from '../ui/button';
+import ErrorMessageList from '../common/ErrorMessageList';
+import ActionLink from '../common/ActionLink';
+import { useAuthUseCase } from '@/src/presentation/hooks/use-service-container';
+import {
+  extractFieldErrors,
+  extractGeneralErrors,
+} from '@/src/presentation/utils/form-errors';
+import { ValidationException, AuthenticationException } from '@/src/domain/exceptions';
 
 export default function SignInForm() {
   const router = useRouter();
@@ -25,6 +30,7 @@ export default function SignInForm() {
     setSignInClicked,
     showResetPasswordForm,
   } = useModalContext();
+  const authUseCase = useAuthUseCase();
 
   const [formErrors, setFormErrors] = useState<string[]>([]);
   const [emailVerificationLinkIsSending, setEmailVerificationLinkIsSending] =
@@ -36,43 +42,56 @@ export default function SignInForm() {
   const [passwordErrorMessage, setPasswordErrorMessage] = useState('');
 
   const sendEmailVerificationLink = async () => {
+    if (!email) return;
+    
     setEmailVerificationLinkIsSending(true);
+    setEmailVerificationLinkWasSent(false);
 
-    await axiosPublic.post(
-      '/api/auth/registration/resend-email/',
-      {
-        email,
-      },
-      {
-        withCredentials: true, // Necessary to pass csrf token
-      }
-    );
-
-    setEmailVerificationLinkWasSent(true);
-    setEmailVerificationLinkIsSending(false);
+    try {
+      await authUseCase.resendEmailVerification(email);
+      setEmailVerificationLinkWasSent(true);
+    } catch (error) {
+      setFormErrors(
+        extractGeneralErrors(error).length > 0
+          ? extractGeneralErrors(error)
+          : ['Failed to send verification email.']
+      );
+    } finally {
+      setEmailVerificationLinkIsSending(false);
+    }
   };
 
   const renderEmailVerificationLink = () => {
     return (
       <>
-        {!emailVerificationLinkIsSending && (
-          <Link
-            href='#'
-            onClick={(e) => sendEmailVerificationLink()}
-            underline='hover'
+        {!emailVerificationLinkIsSending && !emailVerificationLinkWasSent && (
+          <ActionLink
+            onClick={(e) => {
+              e.preventDefault();
+              sendEmailVerificationLink();
+            }}
+            disabled={emailVerificationLinkIsSending}
           >
             Click here to send another verification email.
-          </Link>
+          </ActionLink>
         )}
 
         {!emailVerificationLinkIsSending && emailVerificationLinkWasSent && (
-          <p>A new verification email was sent.</p>
+          <p
+            role='status'
+            style={{
+              color: theme.palette.success.main,
+              margin: `${theme.spacing(1)} 0`,
+            }}
+          >
+            A new verification email was sent.
+          </p>
         )}
       </>
     );
   };
 
-  const submit = async (event) => {
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSignInClicked(true);
     setEmailVerificationLinkWasSent(false);
@@ -82,29 +101,33 @@ export default function SignInForm() {
     setFormErrors([]);
 
     const data = Object.fromEntries(new FormData(event.currentTarget));
+    const emailValue = (data.email as string) || '';
+    const passwordValue = (data.password as string) || '';
 
     try {
-      const response: any = await signIn('credentials', {
-        email: data.email,
-        password: data.password,
-        is_registration: false,
-        redirect: false,
-      });
-
-      if (response.error) {
-        const responseError = JSON.parse(response.error);
-        const error: ErrorFormSignInInterface = responseError.errors;
-
-        if (error.email) setEmailErrorMessage(error.email.join('\n'));
-        if (error.password) setPasswordErrorMessage(error.password.join('\n'));
-        if (error.nonFieldErrors) setFormErrors(error.nonFieldErrors);
+      await authUseCase.login(emailValue, passwordValue);
+      
+      // Login successful - redirect
+      setShowSignInModal(false);
+      router.push('/');
+      router.refresh();
+    } catch (error) {
+      if (error instanceof ValidationException) {
+        // Extract field-level errors
+        const fieldErrors = extractFieldErrors(error);
+        if (fieldErrors.email) setEmailErrorMessage(fieldErrors.email);
+        if (fieldErrors.password) setPasswordErrorMessage(fieldErrors.password);
+        
+        // Extract general errors
+        const generalErrors = extractGeneralErrors(error);
+        if (generalErrors.length > 0) {
+          setFormErrors(generalErrors);
+        }
+      } else if (error instanceof AuthenticationException) {
+        setFormErrors([error.message]);
       } else {
-        setShowSignInModal(false);
-        router.push('/');
-        router.refresh();
+        setFormErrors(['An error occurred.']);
       }
-    } catch (e: any) {
-      setFormErrors(['An error occured.']);
     } finally {
       setSignInClicked(false);
     }
@@ -118,7 +141,7 @@ export default function SignInForm() {
       sx={{ backgroundColor: theme.palette.background.default }}
       style={{ justifyContent: 'center' }}
     >
-      <form onSubmit={submit}>
+      <form onSubmit={submit} noValidate aria-label={t('Sign in form')}>
         <Stack
           sx={{ alignItems: 'center', justifyContent: 'center' }}
           spacing={2}
@@ -143,27 +166,28 @@ export default function SignInForm() {
             errorMessage={passwordErrorMessage}
           />
 
-          {formErrors &&
-            formErrors.map((error, i) => (
-              <p key={i}>
-                {error}
-                <br />
-                {error == 'E-mail is not verified.' &&
-                  renderEmailVerificationLink()}
-              </p>
-            ))}
+          <ErrorMessageList
+            errors={formErrors}
+            role='alert'
+            id='signin-errors'
+          />
 
-          <Link
-            href='#'
-            onClick={() => {
-              showSignInForm(false);
-              showResetPasswordForm(true);
+          {formErrors.some((error) => error === 'E-mail is not verified.') &&
+            renderEmailVerificationLink()}
+
+          <ActionLink
+            onClick={(e) => {
+              e.preventDefault();
+              if (!signInClicked) {
+                showSignInForm(false);
+                showResetPasswordForm(true);
+              }
             }}
-            underline='hover'
+            disabled={signInClicked}
             color={theme.palette.secondary.dark}
           >
             {t('Forgot your password ? Ask for a new one here')}
-          </Link>
+          </ActionLink>
 
           <Button
             sx={{
@@ -177,23 +201,23 @@ export default function SignInForm() {
         </Stack>
       </form>
 
-      <Divider sx={{ my: 2, background: 'gray' }} />
+      <Divider sx={{ my: 2, background: theme.palette.divider }} />
 
-      <Link
-        href='#'
-        underline='hover'
-        my={2}
-        color={theme.palette.secondary.dark}
-        textAlign={'center'}
-        mx={'auto'}
-        onClick={() => {
+      <ActionLink
+        onClick={(e) => {
+          e.preventDefault();
           if (!signInClicked) {
             showSignInForm(false);
           }
         }}
+        disabled={signInClicked}
+        color={theme.palette.secondary.dark}
+        textAlign='center'
+        mx='auto'
+        my={2}
       >
         {t('Not registered yet ? Sign up')}
-      </Link>
+      </ActionLink>
     </Stack>
   );
 }

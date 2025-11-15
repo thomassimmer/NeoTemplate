@@ -3,7 +3,6 @@
 import { useModalContext } from '@/app/providers/modal-provider';
 import { useUserContext } from '@/app/providers/user-provider';
 import logo from '@/components/icons/logo.png';
-import { axiosPublic } from '@/lib/axios';
 import { Dialog, Stack, Typography } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import Image from 'next/image';
@@ -12,6 +11,15 @@ import { useTranslation } from 'react-i18next';
 import { LoadingDots } from '../icons';
 import FormControl from '../inputs/FormControl';
 import Button from '../ui/button';
+import ErrorMessageList from '../common/ErrorMessageList';
+import SuccessMessage from '../common/SuccessMessage';
+import { useContactUseCase } from '@/src/presentation/hooks/use-service-container';
+import {
+  extractFieldErrors,
+  extractGeneralErrors,
+  extractDetailError,
+} from '@/src/presentation/utils/form-errors';
+import { ValidationException, EmailServiceException } from '@/src/domain/exceptions';
 
 export default function ContactModal() {
   const theme = useTheme();
@@ -19,6 +27,7 @@ export default function ContactModal() {
   const { t } = useTranslation();
   const { showContactModal, setShowContactModal } = useModalContext();
   const { user } = useUserContext();
+  const contactUseCase = useContactUseCase();
 
   const [sendButtonIsClicked, setSendButtonIsClicked] = useState(false);
   const [formErrors, setFormErrors] = useState<string[]>([]);
@@ -28,7 +37,7 @@ export default function ContactModal() {
   const [emailErrorMessage, setEmailErrorMessage] = useState('');
   const [messageErrorMessage, setMessageErrorMessage] = useState('');
 
-  const submit = async (event) => {
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setFormSuccess('');
     setFormErrors([]);
@@ -37,26 +46,37 @@ export default function ContactModal() {
     setMessageErrorMessage('');
 
     const data = new FormData(event.currentTarget);
+    const emailValue = (data.get('email') as string) || email || '';
+    const messageValue = (data.get('message') as string) || '';
 
     try {
-      await axiosPublic.post('/api/contact/', data, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const result = await contactUseCase.sendContactMessage(
+        emailValue,
+        messageValue
+      );
 
       setMessage('');
-      setFormSuccess('Your message has been sent, thank you.');
-    } catch (e: any) {
-      if (e.response.data) {
-        const error = e.response.data;
+      setFormSuccess(result.message || 'Your message has been sent, thank you.');
+    } catch (error) {
+      if (error instanceof ValidationException) {
+        // Extract field-level errors
+        const fieldErrors = extractFieldErrors(error);
+        if (fieldErrors.email) setEmailErrorMessage(fieldErrors.email);
+        if (fieldErrors.message) setMessageErrorMessage(fieldErrors.message);
 
-        if (error.email) setEmailErrorMessage(error.email.join('\n'));
-        if (error.message) setMessageErrorMessage(error.message.join('\n'));
-        if (error.nonFieldErrors) setFormErrors(error.nonFieldErrors);
-        if (error.detail) setFormErrors([error.detail]);
+        // Extract general errors
+        const generalErrors = extractGeneralErrors(error);
+        const detailError = extractDetailError(error);
+        const allErrors = detailError
+          ? [detailError, ...generalErrors]
+          : generalErrors;
+        if (allErrors.length > 0) {
+          setFormErrors(allErrors);
+        }
+      } else if (error instanceof EmailServiceException) {
+        setFormErrors([error.message]);
       } else {
-        setFormErrors(['An error occured. The mail could not be sent.']);
+        setFormErrors(['An error occurred. The mail could not be sent.']);
       }
     } finally {
       setSendButtonIsClicked(false);
@@ -67,9 +87,10 @@ export default function ContactModal() {
     <Dialog
       fullWidth
       maxWidth='sm'
-      sx={{ border: '1px solid gray' }}
       open={showContactModal}
       onClose={() => setShowContactModal(false)}
+      aria-labelledby='contact-modal-title'
+      aria-describedby='contact-modal-description'
     >
       <div
         style={{
@@ -93,7 +114,9 @@ export default function ContactModal() {
         >
           <Image src={logo} alt='NeoTemplate Logo' width={80} />
           <Typography
+            id='contact-modal-title'
             variant='h3'
+            component='h2'
             color={theme.palette.primary.main}
             fontSize={25}
             fontWeight={'bold'}
@@ -108,7 +131,7 @@ export default function ContactModal() {
           py={4}
           sx={{ backgroundColor: theme.palette.background.default }}
         >
-          <form onSubmit={submit}>
+          <form onSubmit={submit} noValidate aria-label={t('Contact form')}>
             <Stack
               sx={{ alignItems: 'center', justifyContent: 'center' }}
               spacing={2}
@@ -133,14 +156,17 @@ export default function ContactModal() {
                 multiline={true}
               />
 
-              {formErrors &&
-                formErrors.map((error, i) => (
-                  <p key={i} style={{ color: 'red' }}>
-                    {error}
-                  </p>
-                ))}
+              <ErrorMessageList
+                errors={formErrors}
+                role='alert'
+                id='contact-errors'
+              />
 
-              {formSuccess && <p style={{ color: 'green' }}>{formSuccess}</p>}
+              <SuccessMessage
+                message={formSuccess}
+                role='status'
+                id='contact-success'
+              />
 
               <Button
                 type='submit'

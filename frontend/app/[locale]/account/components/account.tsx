@@ -6,12 +6,18 @@ import { LoadingDots } from '@/components/icons';
 import FormControl from '@/components/inputs/FormControl';
 import PictureFormControl from '@/components/inputs/PictureFormControl';
 import Button from '@/components/ui/button';
-import { axiosPublic } from '@/lib/axios';
-import { ErrorFormUpdateProfileInterface, UserInterface } from '@/types/types';
+import ErrorMessageList from '@/components/common/ErrorMessageList';
+import { UserInterface } from '@/types/types';
 import { Stack, Typography } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useUserUseCase } from '@/src/presentation/hooks/use-service-container';
+import {
+  extractFieldErrors,
+  extractGeneralErrors,
+} from '@/src/presentation/utils/form-errors';
+import { ValidationException, UserNotFoundException } from '@/src/domain/exceptions';
 
 export default function Account() {
   const theme = useTheme();
@@ -25,6 +31,7 @@ export default function Account() {
     setShowToast,
     setToastDuration,
   } = useToastContext();
+  const userUseCase = useUserUseCase();
 
   const [formErrors, setFormErrors] = useState<string[]>([]);
   const [saveClicked, setSaveClicked] = useState(false);
@@ -50,8 +57,10 @@ export default function Account() {
     }
   };
 
-  const submit = async (event: any) => {
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (!user) return;
 
     setFormErrors([]);
     setEmailErrorMessage('');
@@ -63,17 +72,50 @@ export default function Account() {
     const formData = new FormData(event.currentTarget);
 
     try {
-      const response = await axiosPublic.put(
-        `/api/users/${user && user.id}/`,
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        }
+      // Prepare update data from form
+      const updateData: {
+        username?: string;
+        email?: string;
+        password?: string;
+        image?: File | null;
+      } = {};
+
+      const username = formData.get('username');
+      if (username && typeof username === 'string') {
+        updateData.username = username;
+      }
+
+      const email = formData.get('email');
+      if (email && typeof email === 'string') {
+        updateData.email = email;
+      }
+
+      const password = formData.get('password');
+      if (password && typeof password === 'string' && password.trim()) {
+        updateData.password = password;
+      }
+
+      const imageFile = formData.get('image') as File | null;
+      if (imageFile && imageFile.size > 0) {
+        updateData.image = imageFile;
+      }
+
+      // Update user using use case
+      const updatedUser = await userUseCase.updateUser(
+        String(user.id),
+        updateData
       );
 
-      const newUserInfo = response.data as UserInterface;
+      // Convert domain User to UserInterface for context
+      const newUserInfo: UserInterface = {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        username: updatedUser.username,
+        image: updatedUser.image,
+        firstName: updatedUser.firstName,
+        lastName: updatedUser.lastName,
+      };
+
       setUser(newUserInfo);
 
       setToastCategory('success');
@@ -81,22 +123,24 @@ export default function Account() {
       setToastDuration(3000);
       setToastMessage(`Your changes are saved.`);
       setShowToast(true);
-    } catch (e: any) {
-      if (e.response.data) {
-        const error = e.response.data as ErrorFormUpdateProfileInterface;
+    } catch (error) {
+      if (error instanceof ValidationException) {
+        // Extract field-level errors
+        const fieldErrors = extractFieldErrors(error);
+        if (fieldErrors.email) setEmailErrorMessage(fieldErrors.email);
+        if (fieldErrors.image) setImageErrorMessage(fieldErrors.image);
+        if (fieldErrors.username) setUsernameErrorMessage(fieldErrors.username);
+        if (fieldErrors.password) setPasswordErrorMessage(fieldErrors.password);
 
-        if (error.email) {
-          setEmailErrorMessage(error.email.join('\n'));
+        // Extract general errors
+        const generalErrors = extractGeneralErrors(error);
+        if (generalErrors.length > 0) {
+          setFormErrors(generalErrors);
         }
-        if (error.image) {
-          setImageErrorMessage(error.image.join('\n'));
-        }
-        if (error.username) {
-          setUsernameErrorMessage(error.username.join('\n'));
-        }
-        if (error.password) {
-          setPasswordErrorMessage(error.password.join('\n'));
-        }
+      } else if (error instanceof UserNotFoundException) {
+        setFormErrors([error.message]);
+      } else {
+        setFormErrors(['An error occurred.']);
       }
     } finally {
       setSaveClicked(false);
@@ -117,20 +161,29 @@ export default function Account() {
       }}
       p={6}
     >
-      <form style={{ width: '100%' }} onSubmit={submit}>
+      <form
+        style={{ width: '100%' }}
+        onSubmit={submit}
+        noValidate
+        aria-label={t('Account settings form')}
+      >
         <Stack spacing={4}>
           <Typography
-            variant='h2'
-            fontSize={25}
-            sx={{ color: theme.palette.text.primary }}
+            variant='h1'
+            component='h1'
+            fontSize={28}
+            fontWeight='bold'
+            sx={{ color: theme.palette.text.primary, mb: 2 }}
           >
             {t('Settings')}
           </Typography>
 
           <Typography
             variant='h2'
-            fontSize={25}
-            sx={{ color: theme.palette.text.primary }}
+            component='h2'
+            fontSize={20}
+            fontWeight='medium'
+            sx={{ color: theme.palette.text.secondary, mb: 1 }}
           >
             {t('Personal Information')}
           </Typography>
@@ -166,12 +219,11 @@ export default function Account() {
             errorMessage={passwordErrorMessage}
           />
 
-          {formErrors &&
-            formErrors.map((error, i) => (
-              <p key={i} style={{ color: 'red' }}>
-                {error}
-              </p>
-            ))}
+          <ErrorMessageList
+            errors={formErrors}
+            role='alert'
+            id='account-errors'
+          />
 
           <Button
             type='submit'

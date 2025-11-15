@@ -1,19 +1,25 @@
 'use client';
 
 import { useModalContext } from '@/app/providers/modal-provider';
-import useAxiosAuth from '@/lib/hooks/use-axios-auth';
-import { Divider, Link, Stack } from '@mui/material';
+import { Divider, Stack } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LoadingDots } from '../icons';
 import FormControl from '../inputs/FormControl';
 import Button from '../ui/button';
+import ErrorMessageList from '../common/ErrorMessageList';
+import SuccessMessage from '../common/SuccessMessage';
+import ActionLink from '../common/ActionLink';
+import { useAuthUseCase } from '@/src/presentation/hooks/use-service-container';
+import {
+  extractFieldErrors,
+  extractGeneralErrors,
+} from '@/src/presentation/utils/form-errors';
+import { ValidationException, EmailServiceException } from '@/src/domain/exceptions';
 
 export default function ResetPasswordForm({}) {
-  const axiosPublic = useAxiosAuth();
   const theme = useTheme();
-
   const { t } = useTranslation();
   const {
     signInClicked,
@@ -21,44 +27,43 @@ export default function ResetPasswordForm({}) {
     showResetPasswordForm,
     showSignInForm,
   } = useModalContext();
+  const authUseCase = useAuthUseCase();
 
   const [formErrors, setFormErrors] = useState<string[]>([]);
   const [formSuccess, setFormSuccess] = useState('');
   const [emailErrorMessage, setEmailErrorMessage] = useState('');
 
-  const submit = async (event) => {
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSignInClicked(true);
     setFormErrors([]);
     setEmailErrorMessage('');
     setFormSuccess('');
+    
     const data = Object.fromEntries(new FormData(event.currentTarget));
+    const emailValue = (data.email as string) || '';
 
     try {
-      await axiosPublic.post(
-        '/api/auth/password/reset/',
-        {
-          email: data.email,
-        },
-        {
-          withCredentials: true, // Necessary to pass csrf token
-        }
-      );
-
+      await authUseCase.requestPasswordReset(emailValue);
+      
       setFormSuccess(
         'If an account with this address exists, an email was sent to it.'
       );
-    } catch (e: any) {
-      if (e.response && e.response.status == 429) {
-        setFormErrors([
-          'Please wait a few minutes before asking for a new email.',
-        ]);
-      } else if (e.response.data) {
-        const error = e.reponse.data;
-
-        if (error.email) setEmailErrorMessage(error.email.join('\n'));
+    } catch (error) {
+      if (error instanceof ValidationException) {
+        // Extract field-level errors
+        const fieldErrors = extractFieldErrors(error);
+        if (fieldErrors.email) setEmailErrorMessage(fieldErrors.email);
+        
+        // Extract general errors
+        const generalErrors = extractGeneralErrors(error);
+        if (generalErrors.length > 0) {
+          setFormErrors(generalErrors);
+        }
+      } else if (error instanceof EmailServiceException) {
+        setFormErrors([error.message]);
       } else {
-        setFormErrors(['An error occured.']);
+        setFormErrors(['An error occurred.']);
       }
     } finally {
       setSignInClicked(false);
@@ -72,7 +77,7 @@ export default function ResetPasswordForm({}) {
       py={4}
       sx={{ backgroundColor: theme.palette.background.default }}
     >
-      <form onSubmit={submit}>
+      <form onSubmit={submit} noValidate aria-label={t('Password reset form')}>
         <Stack
           sx={{ alignItems: 'center', justifyContent: 'center' }}
           spacing={2}
@@ -92,14 +97,17 @@ export default function ResetPasswordForm({}) {
             errorMessage={emailErrorMessage}
           />
 
-          {formErrors &&
-            formErrors.map((error, i) => (
-              <p key={i} style={{ color: 'red' }}>
-                {error}
-              </p>
-            ))}
+          <ErrorMessageList
+            errors={formErrors}
+            role='alert'
+            id='reset-password-errors'
+          />
 
-          {formSuccess && <p style={{ color: 'green' }}>{formSuccess}</p>}
+          <SuccessMessage
+            message={formSuccess}
+            role='status'
+            id='reset-password-success'
+          />
 
           <Button
             sx={{
@@ -113,24 +121,24 @@ export default function ResetPasswordForm({}) {
         </Stack>
       </form>
 
-      <Divider sx={{ my: 2 }} />
+      <Divider sx={{ my: 2, background: theme.palette.divider }} />
 
-      <Link
-        href='#'
-        underline='hover'
-        my={2}
-        color={theme.palette.secondary.dark}
-        textAlign={'center'}
-        mx={'auto'}
-        onClick={() => {
+      <ActionLink
+        onClick={(e) => {
+          e.preventDefault();
           if (!signInClicked) {
             showResetPasswordForm(false);
             showSignInForm(true);
           }
         }}
+        disabled={signInClicked}
+        color={theme.palette.secondary.dark}
+        textAlign='center'
+        mx='auto'
+        my={2}
       >
         {t('Come back')}
-      </Link>
+      </ActionLink>
     </Stack>
   );
 }

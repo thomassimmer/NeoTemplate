@@ -1,12 +1,18 @@
 'use client';
 
 import { useUserContext } from '@/app/providers/user-provider';
+import ErrorMessageList from '@/components/common/ErrorMessageList';
+import SuccessMessage from '@/components/common/SuccessMessage';
 import { LoadingDots } from '@/components/icons';
 import FormControl from '@/components/inputs/FormControl';
 import Button from '@/components/ui/button';
-import useAxiosAuth from '@/lib/hooks/use-axios-auth';
-import { ErrorFormPasswordResetInterface } from '@/types/types';
-import { Stack } from '@mui/material';
+import { AuthenticationException, ValidationException } from '@/src/domain/exceptions';
+import { useAuthUseCase } from '@/src/presentation/hooks/use-service-container';
+import {
+  extractFieldErrors,
+  extractGeneralErrors,
+} from '@/src/presentation/utils/form-errors';
+import { Stack, Typography } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -18,11 +24,10 @@ export default function Home({
   params: { uid: string; token: string };
 }) {
   const theme = useTheme();
-  const axiosPublic = useAxiosAuth();
   const router = useRouter();
-
   const { t } = useTranslation();
   const { user } = useUserContext();
+  const authUseCase = useAuthUseCase();
 
   const [formErrors, setFormErrors] = useState<string[]>([]);
   const [formSuccess, setFormSuccess] = useState('');
@@ -34,7 +39,7 @@ export default function Home({
     router.push('/');
   }
 
-  const submit = async (event) => {
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSignInClicked(true);
     setFormErrors([]);
@@ -43,49 +48,42 @@ export default function Home({
     setPassword2ErrorMessage('');
 
     const data = Object.fromEntries(new FormData(event.currentTarget));
+    const newPassword1 = (data.new_password1 as string) || '';
+    const newPassword2 = (data.new_password2 as string) || '';
 
     try {
-      await axiosPublic.post(
-        '/api/auth/password/reset/confirm/',
-        {
-          uid: params.uid,
-          token: params.token,
-          new_password1: data.new_password1,
-          new_password2: data.new_password2,
-        },
-        {
-          withCredentials: true, // Necessary to pass csrf token
-        }
+      await authUseCase.confirmPasswordReset(
+        params.uid,
+        params.token,
+        newPassword1,
+        newPassword2
       );
 
       router.push('/password-reset/confirm/done/');
-    } catch (e: any) {
-      if (e.response && e.response.status == 429) {
-        setFormErrors([
-          'Please wait a few minutes before asking for a new email.',
-        ]);
-      } else if (e.response.data) {
-        const error: ErrorFormPasswordResetInterface = e.response.data;
-
-        let errorMsgs: string[] = [];
-
-        for (let field of [error.uid, error.token]) {
-          if (field) {
-            for (let e of field) {
-              errorMsgs.push(e);
-            }
-          }
+    } catch (error) {
+      if (error instanceof ValidationException) {
+        // Extract field-level errors
+        const fieldErrors = extractFieldErrors(error);
+        if (fieldErrors.new_password1 || fieldErrors.newPassword1) {
+          setPassword1ErrorMessage(
+            fieldErrors.new_password1 || fieldErrors.newPassword1 || ''
+          );
         }
-        if (errorMsgs) {
-          setFormErrors(errorMsgs);
+        if (fieldErrors.new_password2 || fieldErrors.newPassword2) {
+          setPassword2ErrorMessage(
+            fieldErrors.new_password2 || fieldErrors.newPassword2 || ''
+          );
         }
 
-        if (error.newPassword1)
-          setPassword1ErrorMessage(error.newPassword1.join('\n'));
-        if (error.newPassword2)
-          setPassword2ErrorMessage(error.newPassword2.join('\n'));
+        // Extract general errors (including uid/token errors)
+        const generalErrors = extractGeneralErrors(error);
+        if (generalErrors.length > 0) {
+          setFormErrors(generalErrors);
+        }
+      } else if (error instanceof AuthenticationException) {
+        setFormErrors([error.message]);
       } else {
-        setFormErrors(['An error occured.']);
+        setFormErrors(['An error occurred.']);
       }
     } finally {
       setSignInClicked(false);
@@ -106,8 +104,17 @@ export default function Home({
       }}
       p={6}
     >
-      <form style={{ maxWidth: 'md', width: '100%' }} onSubmit={submit}>
+      <form
+        style={{ maxWidth: 'md', width: '100%' }}
+        onSubmit={submit}
+        noValidate
+        aria-label={t('Set new password form')}
+      >
         <Stack spacing={4}>
+          <Typography variant='h1' component='h1' sx={{ mb: 2 }}>
+            {t('Set New Password')}
+          </Typography>
+
           <FormControl
             type='password'
             id='new_password1'
@@ -126,14 +133,17 @@ export default function Home({
             errorMessage={password2ErrorMessage}
           />
 
-          {formErrors &&
-            formErrors.map((error, i) => (
-              <p key={i} style={{ color: 'red' }}>
-                {error}
-              </p>
-            ))}
+          <ErrorMessageList
+            errors={formErrors}
+            role='alert'
+            id='password-reset-confirm-errors'
+          />
 
-          {formSuccess && <p style={{ color: 'green' }}>{formSuccess}</p>}
+          <SuccessMessage
+            message={formSuccess}
+            role='status'
+            id='password-reset-confirm-success'
+          />
 
           <Button
             type='submit'

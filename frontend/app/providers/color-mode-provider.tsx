@@ -20,6 +20,9 @@ interface ColorModeContextInterface {
 
 const ColorModeContext = createContext({} as ColorModeContextInterface);
 
+// Main color is a constant, defined outside component for better performance
+const mainColor = green;
+
 export default function ColorModeProvider({
   children,
 }: {
@@ -33,8 +36,6 @@ export default function ColorModeProvider({
       setMode(storedMode as PaletteMode);
     }
   }, []);
-
-  const mainColor = green;
 
   const theme = useMemo(
     () =>

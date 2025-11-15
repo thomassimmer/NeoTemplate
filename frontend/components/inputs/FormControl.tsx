@@ -108,8 +108,23 @@ export default function CustomFormControl({
             </InputAdornment>
           )
         }
+        error={!!errorMessage}
+        aria-invalid={!!errorMessage}
+        aria-describedby={errorMessage ? `${id}-error` : undefined}
       />
-      {errorMessage && <p style={{ color: 'red' }}>{errorMessage}</p>}
+      {errorMessage && (
+        <p
+          id={`${id}-error`}
+          role='alert'
+          style={{
+            color: theme.palette.error.main,
+            margin: `${theme.spacing(0.5)} 0 0 0`,
+            fontSize: '0.75rem',
+          }}
+        >
+          {errorMessage}
+        </p>
+      )}
     </FormControl>
   );
 }
