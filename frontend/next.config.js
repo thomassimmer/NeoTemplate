@@ -3,6 +3,7 @@
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: false,
+  output: 'standalone', // Enable standalone output for Docker
   images: {
     domains: ['localhost', 'neotemplate.com'],
   },

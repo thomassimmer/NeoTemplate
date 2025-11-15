@@ -1,18 +1,30 @@
 # pull official base image
-FROM python
+FROM python:3.11-slim
 
 # set work directory
 WORKDIR /usr/src/app
 
-# install psycopg2 dependencies
-RUN apt update \
-    && apt install postgresql gcc python3-dev musl-dev libffi-dev g++ -y
+# set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
 
-# install dependencies
-RUN pip install -U pip setuptools wheel
+# install system dependencies
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        postgresql-client \
+        gcc \
+        python3-dev \
+        libpq-dev \
+        libffi-dev \
+        g++ \
+    && rm -rf /var/lib/apt/lists/*
 
+# install python dependencies
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+
+# copy and install requirements
 COPY ./requirements.txt .
-RUN pip install -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 # copy project
 COPY . .

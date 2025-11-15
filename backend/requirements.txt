@@ -8,4 +8,5 @@ django-allauth
 djangorestframework-simplejwt
 djangorestframework-camel-case
 Pillow
+requests
 uvicorn[standard]
