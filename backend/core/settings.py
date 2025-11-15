@@ -1,67 +1,93 @@
+"""Django settings for NeoTemplate project."""
+
 import os
 from datetime import timedelta
 from pathlib import Path
 
-# Environment ####################################################################################
+# ============================================================================
+# Environment Configuration
+# ============================================================================
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.environ.get("SECRET_KEY")
+if not SECRET_KEY:
+    raise ValueError("SECRET_KEY environment variable is required")
 
 DEBUG = int(os.environ.get("DEBUG", default=0))
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '[::1]', 'backend', 'neotemplate.com']
+ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+    "[::1]",
+    "backend",
+    "neotemplate.com",
+]
 
 FRONTEND_HOST = os.environ.get("FRONTEND_HOST")
+if not FRONTEND_HOST:
+    raise ValueError("FRONTEND_HOST environment variable is required")
 
-MEDIA_ROOT = 'media/'
-MEDIA_URL = '/media/'
+# Site configuration
+SITE_NAME = "NeoTemplate"
 
-STATIC_ROOT = 'static/'
-STATIC_URL = '/static/'
+# Media files
+MEDIA_ROOT = "media/"
+MEDIA_URL = "/media/"
 
-# Application definition
+# Static files
+STATIC_ROOT = "static/"
+STATIC_URL = "/static/"
+
+# ============================================================================
+# Application Definition
+# ============================================================================
+
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-
-    # third party
-    'rest_framework',
-    'rest_framework.authtoken',
-    'corsheaders',
-    'django.contrib.sites',
-
-    # authentication
-    'dj_rest_auth',
-    'dj_rest_auth.registration',
-    'allauth',
-    'allauth.account',
-    'allauth.socialaccount',
-
-    # local
-    'api',
+    # Django core apps
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "django.contrib.sites",
+    # Third-party apps
+    "rest_framework",
+    "rest_framework.authtoken",
+    "corsheaders",
+    # Authentication apps
+    "dj_rest_auth",
+    "dj_rest_auth.registration",
+    "allauth",
+    "allauth.account",
+    "allauth.socialaccount",
+    # Local apps
+    "api",
 ]
 
-SITE_ID = 1  # https://dj-rest-auth.readthedocs.io/en/latest/installation.html#registration-optional
+SITE_ID = 1  # Required for django-allauth
+
+# ============================================================================
+# Middleware Configuration
+# ============================================================================
 
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'djangorestframework_camel_case.middleware.CamelCaseMiddleWare',
-    'allauth.account.middleware.AccountMiddleware'
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "djangorestframework_camel_case.middleware.CamelCaseMiddleWare",
+    "allauth.account.middleware.AccountMiddleware",
 ]
 
-ROOT_URLCONF = 'core.urls'
+# ============================================================================
+# Templates Configuration
+# ============================================================================
 
 TEMPLATES = [
     {
@@ -79,12 +105,18 @@ TEMPLATES = [
     },
 ]
 
+# ============================================================================
+# JWT Configuration
+# ============================================================================
+
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=500) if DEBUG else timedelta(minutes=5),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
-    'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': True,
-    'UPDATE_LAST_LOGIN': True,
+    "ACCESS_TOKEN_LIFETIME": (
+        timedelta(minutes=500) if DEBUG else timedelta(minutes=5)
+    ),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "UPDATE_LAST_LOGIN": True,
     "USER_ID_FIELD": "id",
     "USER_ID_CLAIM": "id",
     "SIGNING_KEY": os.environ.get("JWT_SECRET_KEY"),
@@ -92,38 +124,46 @@ SIMPLE_JWT = {
 
 AUTH_USER_MODEL = "api.User"
 
+# ============================================================================
+# REST Auth Configuration
+# ============================================================================
+
 REST_AUTH = {
-    'USE_JWT': True,
-    'JWT_AUTH_RETURN_EXPIRATION': True,
-    'JWT_AUTH_COOKIE': "jwt_auth",
-    'USER_DETAILS_SERIALIZER': 'api.serializers.UserSerializer',
-    'PASSWORD_RESET_SERIALIZER': 'api.serializers.PasswordResetSerializer',
+    "USE_JWT": True,
+    "JWT_AUTH_RETURN_EXPIRATION": True,
+    "JWT_AUTH_COOKIE": "jwt_auth",
+    "USER_DETAILS_SERIALIZER": "api.serializers.UserSerializer",
+    "PASSWORD_RESET_SERIALIZER": "api.serializers.PasswordResetSerializer",
 }
+
+# ============================================================================
+# Django REST Framework Configuration
+# ============================================================================
 
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
     ),
-
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
-
-    'DEFAULT_RENDERER_CLASSES': (
-        'djangorestframework_camel_case.render.CamelCaseJSONRenderer',
-        'djangorestframework_camel_case.render.CamelCaseBrowsableAPIRenderer',
+    "DEFAULT_RENDERER_CLASSES": (
+        "djangorestframework_camel_case.render.CamelCaseJSONRenderer",
+        "djangorestframework_camel_case.render.CamelCaseBrowsableAPIRenderer",
     ),
-
-    'DEFAULT_PARSER_CLASSES': (
-        'djangorestframework_camel_case.parser.CamelCaseFormParser',
-        'djangorestframework_camel_case.parser.CamelCaseMultiPartParser',
-        'djangorestframework_camel_case.parser.CamelCaseJSONParser',
+    "DEFAULT_PARSER_CLASSES": (
+        "djangorestframework_camel_case.parser.CamelCaseFormParser",
+        "djangorestframework_camel_case.parser.CamelCaseMultiPartParser",
+        "djangorestframework_camel_case.parser.CamelCaseJSONParser",
     ),
-
-    'JSON_UNDERSCOREIZE': {
-        'no_underscore_before_number': True,
+    "JSON_UNDERSCOREIZE": {
+        "no_underscore_before_number": True,
     },
 }
+
+# ============================================================================
+# CORS Configuration
+# ============================================================================
 
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
@@ -138,18 +178,35 @@ CORS_ORIGIN_WHITELIST = [
 CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOW_HEADERS = [
-    "accept", "accept-encoding", "authorization", "content-type",
-    "dnt", "origin", "user-agent", "x-csrftoken", "x-requested-with", "content-range"
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+    "content-range",
 ]
+
+# ============================================================================
+# URL Configuration
+# ============================================================================
 
 ROOT_URLCONF = "core.urls"
 WSGI_APPLICATION = "core.wsgi.application"
 
+# ============================================================================
+# Security Settings
+# ============================================================================
+
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 
-
-# Database
+# ============================================================================
+# Database Configuration
+# ============================================================================
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
 DATABASES = {
@@ -164,8 +221,9 @@ DATABASES = {
 }
 
 
-# Password validation
-# https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
+# ============================================================================
+# Password Validation
+# ============================================================================
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -183,8 +241,9 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
+# ============================================================================
 # Internationalization
-# https://docs.djangoproject.com/en/4.2/topics/i18n/
+# ============================================================================
 
 LANGUAGE_CODE = 'en-us'
 
@@ -194,33 +253,84 @@ USE_I18N = True
 
 USE_TZ = True
 
-# Default primary key field type
-# https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
+# ============================================================================
+# Default Primary Key Field Type
+# ============================================================================
 
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Emails / Accounts
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# ============================================================================
+# Logging Configuration
+# ============================================================================
 
-# if DEBUG:
-#     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
+            "style": "{",
+        },
+        "simple": {
+            "format": "{levelname} {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose" if DEBUG else "simple",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "DEBUG" if DEBUG else "INFO",
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "api": {
+            "handlers": ["console"],
+            "level": "DEBUG" if DEBUG else "INFO",
+            "propagate": False,
+        },
+    },
+}
+
+# ============================================================================
+# Email Configuration
+# ============================================================================
+
+if DEBUG:
+    # Use console backend for local development
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+else:
+    # Use SMTP backend for production
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 
 EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
-DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER or "noreply@neotemplate.com"
 
-ACCOUNT_AUTHENTICATION_METHOD = 'email'
+# ============================================================================
+# Django Allauth Configuration
+# ============================================================================
+
+ACCOUNT_AUTHENTICATION_METHOD = "email"
 ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_USERNAME_REQUIRED = False
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 ACCOUNT_CONFIRM_EMAIL_ON_GET = True
-ACCOUNT_EMAIL_CONFIRMATION_ANONYMOUS_REDIRECT_URL = '/confirm-email/done/'
-ACCOUNT_EMAIL_CONFIRMATION_AUTHENTICATED_REDIRECT_URL = '/confirm-email/done/'
+ACCOUNT_EMAIL_CONFIRMATION_ANONYMOUS_REDIRECT_URL = "/confirm-email/done/"
+ACCOUNT_EMAIL_CONFIRMATION_AUTHENTICATED_REDIRECT_URL = "/confirm-email/done/"
 ACCOUNT_DEFAULT_HTTP_PROTOCOL = "https"
-ACCOUNT_ADAPTER = 'api.adapter.AccountAdapter'
+ACCOUNT_ADAPTER = "api.infrastructure.adapters.account_adapter.AccountAdapter"
 ACCOUNT_RATE_LIMITS = {
     # Change password view (for users already logged in)
     "change_password": "5/m",

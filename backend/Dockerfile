@@ -17,6 +17,7 @@ RUN apt-get update \
         libpq-dev \
         libffi-dev \
         g++ \
+        curl \
     && rm -rf /var/lib/apt/lists/*
 
 # install python dependencies

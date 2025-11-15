@@ -241,6 +241,22 @@ docker exec -it backend python manage.py migrate
 docker exec -it backend python manage.py collectstatic
 ```
 
+### Run Tests
+
+```bash
+# Run all tests
+docker exec -it backend python manage.py test
+
+# Run all tests with verbose output
+docker exec -it backend python manage.py test --verbosity=2
+
+# Run specific test file
+docker exec -it backend python manage.py test api.tests.test_domain
+
+# Run tests and stop at first failure
+docker exec -it backend python manage.py test --failfast
+```
+
 ## What do I need to start from here ?
 
 1. Change every occurence of `NeoTemplate`, `neotemplate`, `Neo` and `Template` by your desired name.
