@@ -13,6 +13,7 @@ import { useTheme } from '@mui/material/styles';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useUserUseCase } from '@/src/presentation/hooks/use-service-container';
+import { domainUserToInterface } from '@/src/presentation/hooks/use-current-user';
 import {
   extractFieldErrors,
   extractGeneralErrors,
@@ -106,17 +107,8 @@ export default function Account() {
         updateData
       );
 
-      // Convert domain User to UserInterface for context
-      const newUserInfo: UserInterface = {
-        id: updatedUser.id,
-        email: updatedUser.email,
-        username: updatedUser.username,
-        image: updatedUser.image,
-        firstName: updatedUser.firstName,
-        lastName: updatedUser.lastName,
-      };
-
-      setUser(newUserInfo);
+      // Convert domain User to UserInterface for context using shared utility
+      setUser(domainUserToInterface(updatedUser));
 
       setToastCategory('success');
       setToastTitle('Success !');

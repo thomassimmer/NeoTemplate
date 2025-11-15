@@ -1,82 +1,36 @@
 'use client';
 
 import { UserInterface } from '@/types/types';
-import { signOut, useSession } from 'next-auth/react';
-import {
-  Dispatch,
-  SetStateAction,
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-} from 'react';
-import { useUserUseCase } from '@/src/presentation/hooks/use-service-container';
-import { UserNotFoundException, AuthenticationException } from '@/src/domain/exceptions';
+import { createContext, useContext } from 'react';
+import { useCurrentUser } from '@/src/presentation/hooks/use-current-user';
 
 interface UserContextInterface {
   user: UserInterface | null;
-  setUser: Dispatch<SetStateAction<UserInterface | null>>;
+  setUser: (user: UserInterface | null) => void;
+  refreshUser: () => Promise<void>;
+  isLoading: boolean;
 }
 
 const UserContext = createContext({} as UserContextInterface);
 
+/**
+ * UserProvider - Provides user context to the application.
+ * Uses the shared useCurrentUser hook to avoid duplication.
+ */
 export default function UserProvider({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { status, data: session } = useSession();
-  const userUseCase = useUserUseCase();
-
-  const [user, setUser] = useState<UserInterface | null>(null);
-
-  useEffect(() => {
-    if (status === 'authenticated') {
-      const fetchUser = async () => {
-        try {
-          const currentUser = await userUseCase.getCurrentUser();
-
-          // Convert domain User to UserInterface for context
-          const newUserInfo: UserInterface = {
-            id: currentUser.id,
-            email: currentUser.email,
-            username: currentUser.username,
-            image: currentUser.image,
-            firstName: currentUser.firstName,
-            lastName: currentUser.lastName,
-          };
-
-          setUser(newUserInfo);
-        } catch (error) {
-          if (error instanceof UserNotFoundException) {
-            // User not found - sign out
-            signOut();
-            return;
-          }
-          if (error instanceof AuthenticationException) {
-            // Authentication failed - token might be invalid or expired
-            console.error('Authentication failed when fetching user:', error);
-            signOut();
-            return;
-          }
-          // For other errors, we might want to log them but not sign out
-          console.error('Failed to fetch user:', error);
-        }
-      };
-
-      if (!user && session?.user) {
-        fetchUser();
-      }
-    } else {
-      setUser(null);
-    }
-  }, [status, user, userUseCase, session]);
+  const { user, setUser, refreshUser, isLoading } = useCurrentUser();
 
   return (
     <UserContext.Provider
       value={{
         user,
         setUser,
+        refreshUser,
+        isLoading,
       }}
     >
       {children}
@@ -84,6 +38,10 @@ export default function UserProvider({
   );
 }
 
+/**
+ * Hook to access user context.
+ * Use this hook to access the current user state throughout the application.
+ */
 export const useUserContext = () => {
   return useContext(UserContext);
 };
