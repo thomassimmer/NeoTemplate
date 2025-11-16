@@ -41,6 +41,9 @@ class User(AbstractUser):
     Email is used as the primary authentication method (see settings.py).
     """
 
+    # Use email as the unique identifier for authentication
+    email = models.EmailField(unique=True, blank=False)
+
     image = models.ImageField(
         upload_to="images",
         null=True,
@@ -49,6 +52,10 @@ class User(AbstractUser):
     )
 
     objects = UserManager()
+
+    # Make email the username field; do not require additional fields for creates
+    USERNAME_FIELD = "email"
+    REQUIRED_FIELDS: list[str] = []
 
     class Meta:
         """Meta options for User model."""

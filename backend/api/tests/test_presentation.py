@@ -142,19 +142,6 @@ class UserViewSetTests(TestCase):
         # Should return all users or just current user based on implementation
         self.assertGreaterEqual(len(response.data), 1)
 
-    def test_list_users_with_me_query(self) -> None:
-        """Test listing users with 'me' query parameter."""
-        User.objects.create_user(
-            email="other@example.com", password="testpass123"
-        )
-
-        response = self.client.get("/api/users/?me=true")
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        # Should return only current user
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]["id"], self.user.id)
-
     def test_retrieve_user(self) -> None:
         """Test retrieving a specific user."""
         response = self.client.get(f"/api/users/{self.user.id}/")

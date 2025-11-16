@@ -4,7 +4,7 @@ import logging
 
 from django.http import JsonResponse
 from rest_framework import mixins, status, viewsets
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -20,7 +20,20 @@ from api.serializers import ContactFormSerializer, UserSerializer
 logger = logging.getLogger(__name__)
 
 
-@permission_classes([UserPermission])
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def health(request: Request) -> JsonResponse:
+    return JsonResponse({"status": "ok"}, status=status.HTTP_200_OK)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def version(request: Request) -> JsonResponse:
+    # Return version information; env-driven in settings
+    from django.conf import settings
+    return JsonResponse({"version": settings.VERSION_SHA}, status=status.HTTP_200_OK)
+
+
 class UserViewSet(
     mixins.UpdateModelMixin,
     mixins.RetrieveModelMixin,
@@ -30,6 +43,7 @@ class UserViewSet(
     """ViewSet for User operations."""
 
     serializer_class = UserSerializer
+    permission_classes = (UserPermission,)
 
     @property
     def service_container(self):
@@ -40,18 +54,9 @@ class UserViewSet(
         """
         Get queryset based on request.
 
-        If 'me' query parameter is present, return only the current user.
-        Otherwise, return all users.
-
         Returns:
             QuerySet or list of users
         """
-        user: User = self.request.user
-
-        if self.request.query_params.get("me", False):
-            return User.objects.filter(id=user.id)
-
-        # Return QuerySet instead of list
         return User.objects.all()
 
     def retrieve(self, request: Request, *args, **kwargs) -> Response:
@@ -68,12 +73,7 @@ class UserViewSet(
         """
         try:
             pk = kwargs.get("pk")
-            if pk == "me":
-                user = request.user
-            else:
-                user = self.service_container.user_use_case.get_user_by_id(
-                    int(pk)
-                )
+            user = self.service_container.user_use_case.get_user_by_id(int(pk))
             serializer = self.get_serializer(user)
             return Response(serializer.data)
         except (ValueError, DomainException) as e:
@@ -118,6 +118,14 @@ class UserViewSet(
             return Response(
                 {"error": str(e)}, status=status.HTTP_400_BAD_REQUEST
             )
+
+    @action(detail=False, methods=["get"], url_path="me")
+    def me(self, request: Request) -> Response:
+        """
+        Return the current authenticated user.
+        """
+        serializer = self.get_serializer(request.user)
+        return Response(serializer.data)
 
 
 @api_view(["POST"])

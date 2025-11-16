@@ -30,6 +30,22 @@ class UserSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["username", "is_staff", "is_active", "groups"]
 
+    def create(self, validated_data: dict) -> User:
+        password = validated_data.pop("password", None)
+        user = super().create(validated_data)
+        if password:
+            user.set_password(password)
+            user.save(update_fields=["password"])
+        return user
+
+    def update(self, instance: User, validated_data: dict) -> User:
+        password = validated_data.pop("password", None)
+        user = super().update(instance, validated_data)
+        if password:
+            user.set_password(password)
+            user.save(update_fields=["password"])
+        return user
+
     def to_representation(self, obj: User) -> dict:
         """
         Transform model instance to representation.

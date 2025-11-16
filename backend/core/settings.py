@@ -14,19 +14,24 @@ SECRET_KEY = os.environ.get("SECRET_KEY")
 if not SECRET_KEY:
     raise ValueError("SECRET_KEY environment variable is required")
 
-DEBUG = int(os.environ.get("DEBUG", default=0))
+DEBUG = str(os.environ.get("DEBUG", "0")).lower() in {"1", "true", "yes", "on"}
 
 ALLOWED_HOSTS = [
-    "localhost",
-    "127.0.0.1",
-    "[::1]",
-    "backend",
-    "neotemplate.com",
+    host.strip()
+    for host in os.environ.get(
+        "ALLOWED_HOSTS",
+        "localhost,127.0.0.1,[::1],backend,neotemplate.com",
+    ).split(",")
+    if host.strip()
 ]
 
 FRONTEND_HOST = os.environ.get("FRONTEND_HOST")
 if not FRONTEND_HOST:
     raise ValueError("FRONTEND_HOST environment variable is required")
+
+# Admin URL and version info
+ADMIN_URL = os.environ.get("ADMIN_URL", "admin/")
+VERSION_SHA = os.environ.get("GIT_SHA", "dev")
 
 # Site configuration
 SITE_NAME = "NeoTemplate"
@@ -119,7 +124,7 @@ SIMPLE_JWT = {
     "UPDATE_LAST_LOGIN": True,
     "USER_ID_FIELD": "id",
     "USER_ID_CLAIM": "id",
-    "SIGNING_KEY": os.environ.get("JWT_SECRET_KEY"),
+    "SIGNING_KEY": os.environ.get("JWT_SECRET_KEY") or SECRET_KEY,
 }
 
 AUTH_USER_MODEL = "api.User"
@@ -147,6 +152,16 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
+    "DEFAULT_THROTTLE_CLASSES": (
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ),
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": os.environ.get("DRF_THROTTLE_ANON", "50/min"),
+        "user": os.environ.get("DRF_THROTTLE_USER", "200/min"),
+    },
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 50,
     "DEFAULT_RENDERER_CLASSES": (
         "djangorestframework_camel_case.render.CamelCaseJSONRenderer",
         "djangorestframework_camel_case.render.CamelCaseBrowsableAPIRenderer",
@@ -162,18 +177,22 @@ REST_FRAMEWORK = {
 }
 
 # ============================================================================
-# CORS Configuration
+# CORS and CSRF Configuration
 # ============================================================================
 
+_default_frontends = "http://localhost:3000,https://neotemplate.com"
 CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:3000",
-    "https://neotemplate.com",
+    origin.strip()
+    for origin in os.environ.get("CSRF_TRUSTED_ORIGINS", _default_frontends).split(",")
+    if origin.strip()
 ]
 
-CORS_ORIGIN_WHITELIST = [
-    "http://localhost:3000",
-    "https://neotemplate.com",
+CORS_ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get("CORS_ALLOWED_ORIGINS", _default_frontends).split(",")
+    if origin.strip()
 ]
+CORS_ORIGIN_WHITELIST = CORS_ALLOWED_ORIGINS
 
 CORS_ALLOW_CREDENTIALS = True
 
@@ -201,8 +220,13 @@ WSGI_APPLICATION = "core.wsgi.application"
 # Security Settings
 # ============================================================================
 
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+SECURE_SSL_REDIRECT = not DEBUG
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SECURE_HSTS_SECONDS = 31536000 if not DEBUG else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
+SECURE_HSTS_PRELOAD = not DEBUG
 
 # ============================================================================
 # Database Configuration
