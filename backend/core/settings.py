@@ -222,7 +222,16 @@ WSGI_APPLICATION = "core.wsgi.application"
 
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
-SECURE_SSL_REDIRECT = not DEBUG
+
+# Avoid HTTPS redirect within CI/test environments (GitHub Actions sets CI=true)
+_CI_ENV = str(os.environ.get("CI", "0")).lower() in {"1", "true", "yes", "on"}
+SECURE_SSL_REDIRECT = str(
+    os.environ.get(
+        "SECURE_SSL_REDIRECT",
+        "1" if (not DEBUG and not _CI_ENV) else "0",
+    )
+).lower() in {"1", "true", "yes", "on"}
+
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_HSTS_SECONDS = 31536000 if not DEBUG else 0
 SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG

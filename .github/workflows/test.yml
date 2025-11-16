@@ -23,6 +23,7 @@ jobs:
           cat > .env << EOF
           SECRET_KEY=${{ secrets.SECRET_KEY || 'test-secret-key-for-ci' }}
           DEBUG=0
+          CI=true
           FRONTEND_HOST=http://localhost:3000
           SQL_ENGINE=django.db.backends.postgresql
           POSTGRES_DB=neotemplate_test
