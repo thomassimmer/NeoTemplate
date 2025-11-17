@@ -42,7 +42,7 @@ class User(AbstractUser):
     """
 
     # Use email as the unique identifier for authentication
-    email = models.EmailField(unique=True, blank=False)
+    email = models.EmailField(unique=True, blank=False, db_index=True)
 
     image = models.ImageField(
         upload_to="images",

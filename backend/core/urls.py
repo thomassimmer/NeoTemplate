@@ -1,6 +1,5 @@
 from allauth.account.views import confirm_email
 from django.conf import settings
-from django.conf.urls import include
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path, re_path
@@ -50,6 +49,7 @@ urlpatterns = (
         ),
 
     ]
-    + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-    + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+    # Only serve static/media files in DEBUG mode (use web server in production)
+    + (static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) if settings.DEBUG else [])
+    + (static(settings.STATIC_URL, document_root=settings.STATIC_ROOT) if settings.DEBUG else [])
 )

@@ -23,8 +23,10 @@ class UserPermission(permissions.BasePermission):
         Returns:
             True if user is authenticated and active, False otherwise
         """
+        if not request.user.is_authenticated:
+            return False
         user: User = request.user
-        return user.is_authenticated and user.is_active
+        return user.is_active
 
     def has_object_permission(
         self, request: Request, view: APIView, user_object: User
@@ -44,10 +46,13 @@ class UserPermission(permissions.BasePermission):
             - Safe methods (GET, HEAD, OPTIONS): All authenticated users
             - Unsafe methods (PUT, PATCH, DELETE): Only superusers or the user themselves
         """
+        if not request.user.is_authenticated:
+            return False
         user: User = request.user
-        if user.is_authenticated and user.is_active:
-            if request.method in permissions.SAFE_METHODS:
-                return True
-            if user.is_superuser or user == user_object:
-                return True
+        if not user.is_active:
+            return False
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        if user.is_superuser or user == user_object:
+            return True
         return False

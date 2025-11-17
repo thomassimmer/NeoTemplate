@@ -57,8 +57,13 @@ class UserSerializer(serializers.ModelSerializer):
             Dictionary representation of user
         """
         ret = super().to_representation(obj)
-        if obj.image and hasattr(obj.image, "url"):
-            ret["image"] = obj.image.url
+        # Only include image URL if the file exists and is saved
+        if obj.image:
+            try:
+                ret["image"] = obj.image.url
+            except ValueError:
+                # Image field exists but file is not saved yet
+                ret["image"] = None
         return ret
 
 
@@ -66,8 +71,6 @@ class ContactFormSerializer(serializers.Serializer):
     """Serializer for contact form submission."""
 
     email = serializers.EmailField(
-        max_length=None,
-        min_length=None,
         allow_blank=False,
         help_text="Email address of the sender",
     )

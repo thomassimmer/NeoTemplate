@@ -2,6 +2,7 @@
 
 import logging
 
+from django.conf import settings
 from django.http import JsonResponse
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import api_view, permission_classes, action
@@ -29,8 +30,7 @@ def health(request: Request) -> JsonResponse:
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def version(request: Request) -> JsonResponse:
-    # Return version information; env-driven in settings
-    from django.conf import settings
+    """Return version information from environment."""
     return JsonResponse({"version": settings.VERSION_SHA}, status=status.HTTP_200_OK)
 
 
@@ -92,21 +92,24 @@ class UserViewSet(
         Args:
             request: HTTP request
             *args: Additional arguments
-            **kwargs: Additional keyword arguments
+            **kwargs: Additional keyword arguments (may contain 'partial' flag)
 
         Returns:
             Updated user serialized response
         """
         try:
-            partial = kwargs.pop("partial", False)
+            # Get partial flag without mutating kwargs
+            partial = kwargs.get("partial", False)
             instance = self.get_object()
             serializer = self.get_serializer(
                 instance, data=request.data, partial=partial
             )
             serializer.is_valid(raise_exception=True)
 
+            # Save via serializer, then apply business logic via use case
+            saved_user = serializer.save()
             updated_user = self.service_container.user_use_case.update_user(
-                serializer.save()
+                saved_user
             )
             serializer = self.get_serializer(updated_user)
             return Response(serializer.data)
@@ -123,7 +126,15 @@ class UserViewSet(
     def me(self, request: Request) -> Response:
         """
         Return the current authenticated user.
+
+        Note: Permission check ensures user is authenticated,
+        but we validate here as well for safety.
         """
+        if not request.user.is_authenticated:
+            return Response(
+                {"error": "Authentication required"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
 
